@@ -16,8 +16,6 @@
 
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 import com.google.common.geometry.S2EdgeIndex.DataEdgeIterator;
 import com.google.common.geometry.S2EdgeUtil.EdgeCrosser;
 
@@ -717,7 +715,7 @@ public final strictfp class S2Loop implements S2Region, Comparable<S2Loop> {
     }
 
     // Loops are not allowed to have any duplicate vertices.
-    HashMap<S2Point, Integer> vmap = Maps.newHashMap();
+    HashMap<S2Point, Integer> vmap = new HashMap<>();
     for (int i = 0; i < numVertices; ++i) {
       Integer previousVertexIndex = vmap.put(vertex(i), i);
       if (previousVertexIndex != null) {
@@ -815,7 +813,9 @@ public final strictfp class S2Loop implements S2Region, Comparable<S2Loop> {
     // The bounding box does not need to be correct before calling this
     // function, but it must at least contain vertex(1) since we need to
     // do a Contains() test on this point below.
-    Preconditions.checkState(bound.contains(vertex(1)));
+    if (!bound.contains(vertex(1))) {
+      throw new IllegalStateException();
+    }
 
     // To ensure that every point is contained in exactly one face of a
     // subdivision of the sphere, all containment tests are done by counting the

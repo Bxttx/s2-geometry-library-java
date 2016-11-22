@@ -15,8 +15,6 @@
  */
 package com.google.common.geometry;
 
-import com.google.common.collect.Lists;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -406,9 +404,14 @@ public strictfp class S2CellUnion implements S2Region, Iterable<S2CellId> {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public S2Region clone() {
+    if(cellIds == null) {
+      throw new NullPointerException();
+    }
+
     S2CellUnion copy = new S2CellUnion();
-    copy.initRawCellIds(Lists.newArrayList(cellIds));
+    copy.initRawCellIds(new ArrayList(cellIds));
     return copy;
   }
 

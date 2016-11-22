@@ -16,9 +16,6 @@
 
 package com.google.common.geometry;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
@@ -211,7 +208,9 @@ public final strictfp class S2Polyline implements S2Region {
    * least one vertex. Throws IllegalStateException if this is not the case.
    */
   public int getNearestEdgeIndex(S2Point point) {
-    Preconditions.checkState(numVertices() > 0, "Empty polyline");
+    if (numVertices() <= 0) {
+      throw new IllegalStateException("Empty polyline");
+    }
 
     if (numVertices() == 1) {
       // If there is only one vertex, the "edge" is trivial, and it's the only one
@@ -238,8 +237,13 @@ public final strictfp class S2Polyline implements S2Region {
    * returns the point on that edge that is closest to p.
    */
   public S2Point projectToEdge(S2Point point, int index) {
-    Preconditions.checkState(numVertices() > 0, "Empty polyline");
-    Preconditions.checkState(numVertices() == 1 || index < numVertices() - 1, "Invalid edge index");
+    if (numVertices() <= 0) {
+      throw new IllegalStateException("Empty polyline");
+    }
+    if (numVertices() != 1 && index >= numVertices() - 1) {
+      throw new IllegalStateException("Invalid edge index");
+    }
+
     if (numVertices() == 1) {
       // If there is only one vertex, it is always closest to any given point.
       return vertex(0);
@@ -268,6 +272,13 @@ public final strictfp class S2Polyline implements S2Region {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(numVertices, Arrays.deepHashCode(vertices));
+    Object[] elements = {numVertices, Arrays.deepHashCode(vertices)};
+
+    int result = 1;
+
+    for (Object element : elements)
+      result = 31 * result + (element == null ? 0 : element.hashCode());
+
+    return result;
   }
 }

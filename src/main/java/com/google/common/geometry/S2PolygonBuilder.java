@@ -16,15 +16,10 @@
 
 package com.google.common.geometry;
 
-import com.google.common.collect.ForwardingMultimap;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multiset;
-
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -65,7 +60,7 @@ public strictfp class S2PolygonBuilder {
    * The current set of edges, grouped by origin. The set of destination
    * vertices is a multiset so that the same edge can be present more than once.
    */
-  private Map<S2Point, Multiset<S2Point>> edges;
+  private Map<S2Point, List<S2Point>> edges;
 
   /**
    * Default constructor for well-behaved polygons. Uses the DIRECTED_XOR
@@ -73,12 +68,11 @@ public strictfp class S2PolygonBuilder {
    */
   public S2PolygonBuilder() {
     this(Options.DIRECTED_XOR);
-
   }
 
   public S2PolygonBuilder(Options options) {
     this.options = options;
-    this.edges = Maps.newHashMap();
+    this.edges = new HashMap<>();
   }
 
   public enum Options {
@@ -119,7 +113,7 @@ public strictfp class S2PolygonBuilder {
     private boolean validate;
     private S1Angle mergeDistance;
 
-    private Options(boolean undirectedEdges, boolean xorEdges) {
+    Options(boolean undirectedEdges, boolean xorEdges) {
       this.undirectedEdges = undirectedEdges;
       this.xorEdges = xorEdges;
       this.validate = false;
@@ -231,21 +225,21 @@ public strictfp class S2PolygonBuilder {
     }
 
     if (options.getXorEdges()) {
-      Multiset<S2Point> candidates = edges.get(v1);
-      if (candidates != null && candidates.count(v0) > 0) {
+      List<S2Point> candidates = edges.get(v1);
+      if (candidates != null && candidates.contains(v0)) {
         eraseEdge(v1, v0);
         return;
       }
     }
 
     if (edges.get(v0) == null) {
-      edges.put(v0, HashMultiset.<S2Point>create());
+      edges.put(v0, new ArrayList<>());
     }
 
     edges.get(v0).add(v1);
     if (options.getUndirectedEdges()) {
       if (edges.get(v1) == null) {
-        edges.put(v1, HashMultiset.<S2Point>create());
+        edges.put(v1, new ArrayList<>());
       }
       edges.get(v1).add(v0);
     }
@@ -297,7 +291,7 @@ public strictfp class S2PolygonBuilder {
       mergeVertices();
     }
 
-    List<S2Edge> dummyUnusedEdges = Lists.newArrayList();
+    List<S2Edge> dummyUnusedEdges = new ArrayList<>();
     if (unusedEdges == null) {
       unusedEdges = dummyUnusedEdges;
     }
@@ -308,7 +302,7 @@ public strictfp class S2PolygonBuilder {
 
     unusedEdges.clear();
     while (!edges.isEmpty()) {
-      Map.Entry<S2Point, Multiset<S2Point>> edge = edges.entrySet().iterator().next();
+      Map.Entry<S2Point, List<S2Point>> edge = edges.entrySet().iterator().next();
 
       S2Point v0 = edge.getKey();
       S2Point v1 = edge.getValue().iterator().next();
@@ -350,7 +344,7 @@ public strictfp class S2PolygonBuilder {
    * of the input edge or loop orientations).
    */
   public boolean assemblePolygon(S2Polygon polygon, List<S2Edge> unusedEdges) {
-    List<S2Loop> loops = Lists.newArrayList();
+    List<S2Loop> loops = new ArrayList<>();
     boolean success = assembleLoops(loops, unusedEdges);
 
     // If edges are undirected, then all loops are already CCW. Otherwise we
@@ -377,7 +371,7 @@ public strictfp class S2PolygonBuilder {
    */
   public S2Polygon assemblePolygon() {
     S2Polygon polygon = new S2Polygon();
-    List<S2Edge> unusedEdges = Lists.newArrayList();
+    List<S2Edge> unusedEdges = new ArrayList<>();
 
     assemblePolygon(polygon, unusedEdges);
 
@@ -388,7 +382,7 @@ public strictfp class S2PolygonBuilder {
 
   protected void dumpEdges(S2Point v0) {
     log.info(v0.toString());
-    Multiset<S2Point> vset = edges.get(v0);
+    List<S2Point> vset = edges.get(v0);
     if (vset != null) {
       for (S2Point v : vset) {
         log.info("    " + v.toString());
@@ -406,7 +400,7 @@ public strictfp class S2PolygonBuilder {
     // Note that there may be more than one copy of an edge if we are not XORing
     // them, so a VertexSet is a multiset.
 
-    Multiset<S2Point> vset = edges.get(v0);
+    List<S2Point> vset = edges.get(v0);
     // assert (vset.count(v1) > 0);
     vset.remove(v1);
     if (vset.isEmpty()) {
@@ -444,10 +438,10 @@ public strictfp class S2PolygonBuilder {
   private S2Loop assembleLoop(S2Point v0, S2Point v1, List<S2Edge> unusedEdges) {
 
     // The path so far.
-    List<S2Point> path = Lists.newArrayList();
+    List<S2Point> path = new ArrayList<>();
 
     // Maps a vertex to its index in "path".
-    Map<S2Point, Integer> index = Maps.newHashMap();
+    Map<S2Point, Integer> index = new HashMap<>();
     path.add(v0);
     path.add(v1);
 
@@ -460,7 +454,7 @@ public strictfp class S2PolygonBuilder {
 
       S2Point v2 = null;
       boolean v2Found = false;
-      Multiset<S2Point> vset = edges.get(v1);
+      List<S2Point> vset = edges.get(v1);
       if (vset != null) {
         for (S2Point v : vset) {
           // We prefer the leftmost outgoing edge, ignoring any reverse edges.
@@ -523,10 +517,10 @@ public strictfp class S2PolygonBuilder {
 
     // We need to copy the set of edges affected by the move, since
     // this.edges_could be reallocated when we start modifying it.
-    List<S2Edge> edgesCopy = Lists.newArrayList();
-    for (Map.Entry<S2Point, Multiset<S2Point>> edge : this.edges.entrySet()) {
+    List<S2Edge> edgesCopy = new ArrayList<>();
+    for (Map.Entry<S2Point, List<S2Point>> edge : this.edges.entrySet()) {
       S2Point v0 = edge.getKey();
-      Multiset<S2Point> vset = edge.getValue();
+      List<S2Point> vset = edge.getValue();
       for (S2Point v1 : vset) {
         if (mergeMap.get(v0) != null || mergeMap.get(v1) != null) {
 
@@ -573,9 +567,9 @@ public strictfp class S2PolygonBuilder {
 
     PointIndex index = new PointIndex(options.getMergeDistance().radians());
 
-    for (Map.Entry<S2Point, Multiset<S2Point>> edge : edges.entrySet()) {
+    for (Map.Entry<S2Point, List<S2Point>> edge : edges.entrySet()) {
       index.add(edge.getKey());
-      Multiset<S2Point> vset = edge.getValue();
+      List<S2Point> vset = edge.getValue();
       for (S2Point v : vset) {
         index.add(v);
       }
@@ -584,9 +578,9 @@ public strictfp class S2PolygonBuilder {
     // Next, we loop through all the vertices and attempt to grow a maximial
     // mergeable group starting from each vertex.
 
-    Map<S2Point, S2Point> mergeMap = Maps.newHashMap();
-    Stack<S2Point> frontier = new Stack<S2Point>();
-    List<S2Point> mergeable = Lists.newArrayList();
+    Map<S2Point, S2Point> mergeMap = new HashMap<>();
+    Stack<S2Point> frontier = new Stack<>();
+    List<S2Point> mergeable = new ArrayList<>();
 
     for (Map.Entry<S2CellId, MarkedS2Point> entry : index.entries()) {
       MarkedS2Point point = entry.getValue();
@@ -626,10 +620,9 @@ public strictfp class S2PolygonBuilder {
    * fixed-radius queries and has various special-purpose operations to avoid
    * the need for additional data structures.
    */
-  private class PointIndex extends ForwardingMultimap<S2CellId, MarkedS2Point> {
+  private class PointIndex extends HashMap<S2CellId, Collection<MarkedS2Point>> {
     private double searchRadius;
     private int level;
-    private final Multimap<S2CellId, MarkedS2Point> delegate = HashMultimap.create();
 
     public PointIndex(double searchRadius) {
 
@@ -644,21 +637,20 @@ public strictfp class S2PolygonBuilder {
           Math.min(S2Projections.MIN_WIDTH.getMaxLevel(2 * searchRadius), S2CellId.MAX_LEVEL - 1);
     }
 
-    @Override
-    protected Multimap<S2CellId, MarkedS2Point> delegate() {
-      return delegate;
-    }
-
     /** Add a point to the index if it does not already exist. */
     public void add(S2Point p) {
       S2CellId id = S2CellId.fromPoint(p).parent(level);
       Collection<MarkedS2Point> pointSet = get(id);
+      if(pointSet == null)
+        pointSet = new HashSet<>();
       for (MarkedS2Point point : pointSet) {
         if (point.getPoint().equals(p)) {
           return;
         }
       }
-      put(id, new MarkedS2Point(p));
+
+      put(id, pointSet);
+      pointSet.add(new MarkedS2Point(p));
     }
 
     /**
@@ -669,22 +661,38 @@ public strictfp class S2PolygonBuilder {
     public void query(S2Point center, List<S2Point> output) {
       output.clear();
 
-      List<S2CellId> neighbors = Lists.newArrayList();
+      List<S2CellId> neighbors = new ArrayList<>();
       S2CellId.fromPoint(center).getVertexNeighbors(level, neighbors);
       for (S2CellId id : neighbors) {
         // Iterate over the points contained by each vertex neighbor.
-        for (MarkedS2Point mp : get(id)) {
-          if (mp.isMarked()) {
-            continue;
-          }
-          S2Point p = mp.getPoint();
+        Collection<MarkedS2Point> points = get(id);
+        if(points != null) {
+          for (MarkedS2Point mp : points) {
+            if (mp.isMarked()) {
+              continue;
+            }
+            S2Point p = mp.getPoint();
 
-          if (center.angle(p) <= searchRadius) {
-            output.add(p);
-            mp.mark();
+            if (center.angle(p) <= searchRadius) {
+              output.add(p);
+              mp.mark();
+            }
           }
         }
       }
+    }
+
+    public Collection<Map.Entry<S2CellId, MarkedS2Point>> entries() {
+      Collection<Map.Entry<S2CellId, MarkedS2Point>> result = new HashSet<>();
+
+      for (Entry<S2CellId, Collection<MarkedS2Point>> entry : entrySet()) {
+        S2CellId key = entry.getKey();
+        for (MarkedS2Point value : entry.getValue()) {
+          result.add(new SimpleEntry<>(key, value));
+        }
+      }
+
+      return result;
     }
   }
 

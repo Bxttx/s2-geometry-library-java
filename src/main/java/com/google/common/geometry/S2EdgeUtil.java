@@ -16,8 +16,6 @@
 
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-
 /**
  * This class contains various utility functions related to edges. It collects
  * together common code that is needed to implement polygonal geometry such as
@@ -679,8 +677,9 @@ public strictfp class S2EdgeUtil {
    * "DEFAULT_INTERSECTION_TOLERANCE" below for details.
    */
   public static S2Point getIntersection(S2Point a0, S2Point a1, S2Point b0, S2Point b1) {
-    Preconditions.checkArgument(robustCrossing(a0, a1, b0, b1) > 0,
-        "Input edges a0a1 and b0b1 muct have a true robustCrossing.");
+    if (robustCrossing(a0, a1, b0, b1) <= 0) {
+      throw new IllegalArgumentException("Input edges a0a1 and b0b1 muct have a true robustCrossing.");
+    }
 
     // We use robustCrossProd() to get accurate results even when two endpoints
     // are close together, or when the two line segments are nearly parallel.
@@ -734,7 +733,10 @@ public strictfp class S2EdgeUtil {
    * that X == Interpolate(A, B, t). Requires that A and B are distinct.
    */
   public static double getDistanceFraction(S2Point x, S2Point a0, S2Point a1) {
-    Preconditions.checkArgument(!a0.equals(a1));
+    if (a0.equals(a1)) {
+      throw new IllegalArgumentException();
+    }
+
     double d0 = x.angle(a0);
     double d1 = x.angle(a1);
     return d0 / (d0 + d1);
@@ -758,9 +760,15 @@ public strictfp class S2EdgeUtil {
    * most accurate results.
    */
   public static S1Angle getDistance(S2Point x, S2Point a, S2Point b, S2Point aCrossB) {
-    Preconditions.checkArgument(S2.isUnitLength(x));
-    Preconditions.checkArgument(S2.isUnitLength(a));
-    Preconditions.checkArgument(S2.isUnitLength(b));
+    if (!S2.isUnitLength(x)) {
+      throw new IllegalArgumentException();
+    }
+    if (!S2.isUnitLength(a)) {
+      throw new IllegalArgumentException();
+    }
+    if (!S2.isUnitLength(b)) {
+      throw new IllegalArgumentException();
+    }
 
     // There are three cases. If X is located in the spherical wedge defined by
     // A, B, and the axis A x B, then the closest point is on the segment AB.
@@ -792,9 +800,15 @@ public strictfp class S2EdgeUtil {
    *
    */
   public static S2Point getClosestPoint(S2Point x, S2Point a, S2Point b) {
-    Preconditions.checkArgument(S2.isUnitLength(x));
-    Preconditions.checkArgument(S2.isUnitLength(a));
-    Preconditions.checkArgument(S2.isUnitLength(b));
+    if (!S2.isUnitLength(x)) {
+      throw new IllegalArgumentException();
+    }
+    if (!S2.isUnitLength(a)) {
+      throw new IllegalArgumentException();
+    }
+    if (!S2.isUnitLength(b)) {
+      throw new IllegalArgumentException();
+    }
 
     S2Point crossProd = S2.robustCrossProd(a, b);
     // Find the closest point to X along the great circle through AB.

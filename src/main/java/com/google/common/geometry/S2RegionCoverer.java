@@ -15,8 +15,6 @@
  */
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -486,7 +484,9 @@ public final strictfp class S2RegionCoverer {
     // children first), and then by the number of fully contained children
     // (fewest children first).
 
-    Preconditions.checkState(candidateQueue.isEmpty() && result.isEmpty());
+    if (!(candidateQueue.isEmpty() && result.isEmpty())) {
+      throw new IllegalStateException();
+    }
 
     this.region = region;
     candidatesCreatedCounter = 0;

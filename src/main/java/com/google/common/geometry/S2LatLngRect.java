@@ -15,8 +15,6 @@
  */
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-
 /**
  * An S2LatLngRect represents a latitude-longitude rectangle. It is capable of
  * representing the empty and full rectangles as well as single points.
@@ -229,8 +227,12 @@ public strictfp class S2LatLngRect implements S2Region {
     // with simplified calculations.
     S2LatLngRect a = this;
 
-    Preconditions.checkState(!a.isEmpty());
-    Preconditions.checkArgument(p.isValid());
+    if (a.isEmpty()) {
+      throw new IllegalStateException();
+    }
+    if (!p.isValid()) {
+      throw new IllegalArgumentException();
+    }
 
     if (a.lng().contains(p.lng().radians())) {
       return S1Angle.radians(Math.max(0.0, Math.max(p.lat().radians() - a.lat().hi(),
@@ -258,8 +260,12 @@ public strictfp class S2LatLngRect implements S2Region {
     S2LatLngRect a = this;
     S2LatLngRect b = other;
 
-    Preconditions.checkState(!a.isEmpty());
-    Preconditions.checkArgument(!b.isEmpty());
+    if (a.isEmpty()) {
+      throw new IllegalStateException();
+    }
+    if (b.isEmpty()) {
+      throw new IllegalArgumentException();
+    }
 
     // First, handle the trivial cases where the longitude intervals overlap.
     if (a.lng().intersects(b.lng())) {

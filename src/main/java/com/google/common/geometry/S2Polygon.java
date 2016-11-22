@@ -16,18 +16,16 @@
 
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.TreeMultimap;
-
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 /**
@@ -68,7 +66,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
    * Creates an empty polygon that should be initialized by calling Init().
    */
   public S2Polygon() {
-    this.loops = Lists.newArrayList();
+    this.loops = new ArrayList<>();
     this.bound = S2LatLngRect.empty();
     this.hasHoles = false;
     this.numVertices = 0;
@@ -79,7 +77,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
    * given list.
    */
   public S2Polygon(List<S2Loop> loops) {
-    this.loops = Lists.newArrayList();
+    this.loops = new ArrayList<>();
     this.bound = S2LatLngRect.empty();
 
     init(loops);
@@ -89,7 +87,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
    * Copy constructor.
    */
   public S2Polygon(S2Loop loop) {
-    this.loops = Lists.newArrayList();
+    this.loops = new ArrayList<>();
     this.bound = loop.getRectBound();
     this.hasHoles = false;
     this.numVertices = loop.numVertices();
@@ -101,7 +99,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
    * Copy constructor.
    */
   public S2Polygon(S2Polygon src) {
-    this.loops = Lists.newArrayList();
+    this.loops = new ArrayList<>();
     this.bound = src.getRectBound();
     this.hasHoles = src.hasHoles;
     this.numVertices = src.numVertices;
@@ -144,10 +142,10 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
     // assert isValid(loops);
     // assert (this.loops.isEmpty());
 
-    Map<S2Loop, List<S2Loop>> loopMap = Maps.newHashMap();
+    Map<S2Loop, List<S2Loop>> loopMap = new HashMap<>();
     // Yes, a null key is valid. It is used here to refer to the root of the
     // loopMap
-    loopMap.put(null, Lists.<S2Loop>newArrayList());
+    loopMap.put(null, new ArrayList<>());
 
     for (S2Loop loop : loops) {
       insertLoop(loop, null, loopMap);
@@ -206,7 +204,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
     // We only need this test if there are at least two loops, assuming that
     // each loop has already been validated.
     if (loops.size() > 1) {
-      Map<UndirectedEdge, LoopVertexIndexPair> edges = Maps.newHashMap();
+      Map<UndirectedEdge, LoopVertexIndexPair> edges = new HashMap<>();
       for (int i = 0; i < loops.size(); ++i) {
         S2Loop lp = loops.get(i);
         for (int j = 0; j < lp.numVertices(); ++j) {
@@ -630,7 +628,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
     S2PolygonIndex bIndex = new S2PolygonIndex(b, reverseB);
     bIndex.predictAdditionalCalls(a.getNumVertices());
 
-    List<ParametrizedS2Point> intersections = Lists.newArrayList();
+    List<ParametrizedS2Point> intersections = new ArrayList<>();
     for (S2Loop aLoop : a.loops) {
       int n = aLoop.numVertices();
       int dir = (aLoop.isHole() ^ reverseA) ? -1 : 1;
@@ -687,7 +685,10 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
 
   public void initToIntersectionSloppy(
       final S2Polygon a, final S2Polygon b, S1Angle vertexMergeRadius) {
-    Preconditions.checkState(numLoops() == 0);
+    if (numLoops() != 0) {
+      throw new IllegalStateException();
+    }
+
     if (!a.bound.intersects(b.bound)) {
       return;
     }
@@ -712,7 +713,9 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
   }
 
   public void initToUnionSloppy(final S2Polygon a, final S2Polygon b, S1Angle vertexMergeRadius) {
-    Preconditions.checkState(numLoops() == 0);
+		if (numLoops() != 0) {
+			throw new IllegalStateException();
+		}
 
     // We want the boundary of A clipped to the exterior of B,
     // plus the boundary of B clipped to the exterior of A,
@@ -749,49 +752,93 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
     // to the queue until we have a single polygon to return.
 
     // map: # of vertices -> polygon
-    TreeMultimap<Integer, S2Polygon> queue = TreeMultimap.create();
+    Map<Integer, Collection<S2Polygon>> queue = new TreeMap<>();
 
     for (S2Polygon polygon : polygons) {
-      queue.put(polygon.getNumVertices(), polygon);
+      int vertices = polygon.getNumVertices();
+
+      Collection<S2Polygon> polygonList = queue.get(vertices);
+      if(polygonList == null) {
+        queue.put(vertices, polygonList = new TreeSet<>());
+      }
+
+      polygonList.add(polygon);
     }
     polygons.clear();
 
-    Set<Map.Entry<Integer, S2Polygon>> queueSet = queue.entries();
+    Collection<Map.Entry<Integer, S2Polygon>> queueSet = entries(queue);
     while (queueSet.size() > 1) {
       // Pop two simplest polygons from queue.
-      queueSet = queue.entries();
+      queueSet = entries(queue);
       Iterator<Map.Entry<Integer, S2Polygon>> smallestIter = queueSet.iterator();
 
       Map.Entry<Integer, S2Polygon> smallest = smallestIter.next();
-      int aSize = smallest.getKey().intValue();
+      int aSize = smallest.getKey();
       S2Polygon aPolygon = smallest.getValue();
-      smallestIter.remove();
+			smallestIter.remove();
+			remove(queue, smallest);
 
       smallest = smallestIter.next();
-      int bSize = smallest.getKey().intValue();
+      int bSize = smallest.getKey();
       S2Polygon bPolygon = smallest.getValue();
-      smallestIter.remove();
+			smallestIter.remove();
+			remove(queue, smallest);
 
       // Union and add result back to queue.
       S2Polygon unionPolygon = new S2Polygon();
       unionPolygon.initToUnionSloppy(aPolygon, bPolygon, vertexMergeRadius);
+
       int unionSize = aSize + bSize;
-      queue.put(unionSize, unionPolygon);
+      Collection<S2Polygon> polygonList = queue.get(unionSize);
+      if(polygonList == null) {
+        queue.put(unionSize, polygonList = new TreeSet<>());
+			}
+      polygonList.add(unionPolygon);
       // We assume that the number of vertices in the union polygon is the
       // sum of the number of vertices in the original polygons, which is not
       // always true, but will almost always be a decent approximation, and
       // faster than recomputing.
     }
 
-    if (queue.isEmpty()) {
-      return new S2Polygon();
-    } else {
-      return queue.get(queue.asMap().firstKey()).first();
+    Iterator<Map.Entry<Integer, Collection<S2Polygon>>> keyIterator = queue.entrySet().iterator();
+    if(keyIterator.hasNext()) {
+      Map.Entry<Integer, Collection<S2Polygon>> firstEntry = keyIterator.next();
+      Iterator<S2Polygon> polygonIterator = firstEntry.getValue().iterator();
+      if (polygonIterator.hasNext())
+        return polygonIterator.next();
     }
+    return new S2Polygon();
   }
 
-  public boolean isNormalized() {
-    Multiset<S2Point> vertices = HashMultiset.<S2Point>create();
+	private static <K, V> Collection<Map.Entry<K, V>> entries(Map<K, Collection<V>> queue) {
+    Collection<Map.Entry<K, V>> entries = new ArrayList<>();
+
+    for (Map.Entry<K, Collection<V>> entry : queue.entrySet()) {
+			K key = entry.getKey();
+			for (V value : entry.getValue()) {
+				entries.add(new AbstractMap.SimpleEntry<>(key, value));
+			}
+		}
+
+		return entries;
+	}
+
+  private static void remove(Map<Integer, Collection<S2Polygon>> map, Map.Entry<Integer, S2Polygon> entry) {
+    int key = entry.getKey();
+
+    Collection<S2Polygon> polygons = map.get(key);
+    if(polygons == null) {
+      map.remove(key);
+    } else {
+			polygons.remove(entry.getValue());
+			if(polygons.isEmpty()) {
+				map.remove(key);
+			}
+		}
+  }
+
+	public boolean isNormalized() {
+    List<S2Point> vertices = new ArrayList<>();
     S2Loop lastParent = null;
     for (int i = 0; i < numLoops(); ++i) {
       S2Loop child = loop(i);
@@ -808,7 +855,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
       }
       int count = 0;
       for (int j = 0; j < child.numVertices(); ++j) {
-        if (vertices.count(child.vertex(j)) > 0) {
+        if (vertices.contains(child.vertex(j))) {
           ++count;
         }
       }
@@ -938,7 +985,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
     List<S2Loop> children = loopMap.get(parent);
 
     if (children == null) {
-      children = Lists.newArrayList();
+      children = new ArrayList<>();
       loopMap.put(parent, children);
     }
 
@@ -960,7 +1007,7 @@ public final strictfp class S2Polygon implements S2Region, Comparable<S2Polygon>
       S2Loop child = children.get(i);
       if (newLoop.containsNested(child)) {
         if (newChildren == null) {
-          newChildren = Lists.newArrayList();
+          newChildren = new ArrayList<>();
           loopMap.put(newLoop, newChildren);
         }
         newChildren.add(child);

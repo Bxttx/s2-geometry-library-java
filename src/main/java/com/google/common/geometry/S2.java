@@ -15,9 +15,6 @@
  */
 package com.google.common.geometry;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-
 public final strictfp class S2 {
 
   // Declare some frequently used constants
@@ -43,6 +40,8 @@ public final strictfp class S2 {
   private static final long EXPONENT_MASK = 0x7ff0000000000000L;
 
   /**
+   * !! Visible for testing !!
+   *
    * If v is non-zero, return an integer {@code exp} such that
    * {@code (0.5 <= |v|*2^(-exp) < 1)}. If v is zero, return 0.
    *
@@ -53,7 +52,6 @@ public final strictfp class S2 {
    *
    * TODO(dbeaumont): Replace this with "DoubleUtils.getExponent(v) - 1" ?
    */
-  @VisibleForTesting
   static int exp(double v) {
     if (v == 0) {
       return 0;
@@ -79,7 +77,10 @@ public final strictfp class S2 {
    * @throws IllegalArgumentException if position is out of bounds.
    */
   public static int posToOrientation(int position) {
-    Preconditions.checkArgument(0 <= position && position < 4);
+    if (0 > position || position >= 4) {
+      throw new IllegalArgumentException();
+    }
+
     return POS_TO_ORIENTATION[position];
   }
 
@@ -104,8 +105,13 @@ public final strictfp class S2 {
    * @throws IllegalArgumentException if either parameter is out of bounds.
    */
   public static int posToIJ(int orientation, int position) {
-    Preconditions.checkArgument(0 <= orientation && orientation < 4);
-    Preconditions.checkArgument(0 <= position && position < 4);
+		if(0 > orientation || orientation >= 4) {
+			throw new IllegalArgumentException();
+		}
+		if(0 > position || position >= 4) {
+			throw new IllegalArgumentException();
+		}
+
     return POS_TO_IJ[orientation][position];
   }
 
@@ -130,9 +136,14 @@ public final strictfp class S2 {
    * @throws IllegalArgumentException if either parameter is out of bounds.
    */
   public static final int ijToPos(int orientation, int ijIndex) {
-    Preconditions.checkArgument(0 <= orientation && orientation < 4);
-    Preconditions.checkArgument(0 <= ijIndex && ijIndex < 4);
-    return IJ_TO_POS[orientation][ijIndex];
+		if(0 > orientation || orientation >= 4) {
+			throw new IllegalArgumentException();
+		}
+		if(0 > ijIndex || ijIndex >= 4) {
+			throw new IllegalArgumentException();
+		}
+
+		return IJ_TO_POS[orientation][ijIndex];
   }
 
   /**

@@ -16,10 +16,6 @@
 
 package com.google.common.geometry;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -104,12 +100,12 @@ public abstract strictfp class S2EdgeIndex {
     if (indexComputed) {
       return;
     }
-    List<Long> cellList = Lists.newArrayList();
-    List<Integer> edgeList = Lists.newArrayList();
+    List<Long> cellList = new ArrayList<>();
+    List<Integer> edgeList = new ArrayList<>();
     for (int i = 0; i < getNumEdges(); ++i) {
       S2Point from = edgeFrom(i);
       S2Point to = edgeTo(i);
-      ArrayList<S2CellId> cover = Lists.newArrayList();
+      ArrayList<S2CellId> cover = new ArrayList<>();
       int level = getCovering(from, to, true, cover);
       minimumS2LevelUsed = Math.min(minimumS2LevelUsed, level);
       for (S2CellId cellId : cover) {
@@ -230,8 +226,11 @@ public abstract strictfp class S2EdgeIndex {
    * advantage of the natural ordering of S2CellIds.
    */
   protected void findCandidateCrossings(S2Point a, S2Point b, List<Integer> candidateCrossings) {
-    Preconditions.checkState(indexComputed);
-    ArrayList<S2CellId> cover = Lists.newArrayList();
+    if (!indexComputed) {
+      throw new IllegalStateException();
+    }
+
+    ArrayList<S2CellId> cover = new ArrayList<>();
     getCovering(a, b, false, cover);
 
     // Edge references are inserted into the map once for each covering cell, so
@@ -421,7 +420,7 @@ public abstract strictfp class S2EdgeIndex {
    */
   private void getEdgesInParentCells(List<S2CellId> cover, Set<Integer> candidateCrossings) {
     // Find all parent cells of covering cells.
-    Set<S2CellId> parentCells = Sets.newHashSet();
+    Set<S2CellId> parentCells = new HashSet<>();
     for (S2CellId coverCell : cover) {
       for (int parentLevel = coverCell.level() - 1; parentLevel >= minimumS2LevelUsed;
           --parentLevel) {
@@ -575,7 +574,7 @@ public abstract strictfp class S2EdgeIndex {
 
     public DataEdgeIterator(S2EdgeIndex edgeIndex) {
       this.edgeIndex = edgeIndex;
-      candidates = Lists.newArrayList();
+      candidates = new ArrayList<>();
     }
 
     /**
@@ -603,7 +602,10 @@ public abstract strictfp class S2EdgeIndex {
      * Index of the current edge in the iteration.
      */
     public int index() {
-      Preconditions.checkState(hasNext());
+      if (!hasNext()) {
+        throw new IllegalStateException();
+      }
+
       return currentIndex;
     }
 
@@ -622,7 +624,10 @@ public abstract strictfp class S2EdgeIndex {
      * Iterate to the next available candidate.
      */
     public void next() {
-      Preconditions.checkState(hasNext());
+      if (!hasNext()) {
+        throw new IllegalStateException();
+      }
+
       if (isBruteForce) {
         ++currentIndex;
       } else {
